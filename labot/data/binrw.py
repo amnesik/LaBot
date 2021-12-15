@@ -110,7 +110,7 @@ class Data:
         return int.from_bytes(self.read(2), "big", signed=True)
 
     def writeShort(self, s):
-        self.data += s.to_bytes(2, "big", signed=True)
+        self.data += s.to_bytes(2, "big", signed=False)
 
     def readUTF(self):
         lon = self.readUnsignedShort()

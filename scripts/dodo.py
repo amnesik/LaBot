@@ -82,7 +82,9 @@ if __name__ == "__main__":
         def my_callback(coJeu, coSer):
             global bridges
 #            bridge = InjectorBridgeHandler(coJeu, coSer, dumper=dumper)
-            bridge = PrintingMsgBridgeHandler(coJeu, coSer)
+            bridge = LucInjector(coJeu, coSer)
+#            bridge = PrintingMsgBridgeHandler(coJeu, coSer)
+
             bridges.append(bridge)
             bridge.loop()
 
@@ -101,7 +103,8 @@ if __name__ == "__main__":
             elif sys.platform == "win32":
                 target = "Dofus.exe"
             else:
-                assert False, "Your platform requires a pid to attach"
+                target = "Dofus.exe"
+#                assert False, "Your platform requires a pid to attach"
 
     if args.launch or args.attach:
         hook(target, args.port, FILTER)

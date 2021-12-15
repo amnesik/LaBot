@@ -216,9 +216,8 @@ class Buffer(Data):
 
     def reset(self):
         self.__init__()
-
-
 import logging
+
 
 
 logger = logging.getLogger("labot")
@@ -321,13 +320,12 @@ class Msg:
         type_id: int = types[type_name]["protocolId"]
         data = write(type_name, json, random_hash=random_hash)
         return Msg(type_id, data, count)
-
-
 from js import types, msg_from_id, types_from_id, primitives
 from functools import reduce
 import logging
 import random
 from zlib import decompress
+
 
 
 logger = logging.getLogger("labot")
@@ -453,7 +451,6 @@ def write(type, json, data=None, random_hash=True) -> Data:
         data.write(hash)
     return data
 
-
 import traceback
 import json
 
@@ -471,3 +468,4 @@ def main():
         out.value = json.dumps(ans, indent=4, sort_keys=True)
     except Exception as e:
         out.value = traceback.format_exc()
+

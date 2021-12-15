@@ -1,13 +1,13 @@
 #!/bin/sh
 
-export DofusInvoker="/Applications/Dofus.app/Contents/Data/Dofus.app/Contents/Resources/DofusInvoker.swf"
+export DofusInvoker="/home/lucki/.config/Ankama/Dofus/DofusInvoker.swf"
 export selectclass='com.ankamagames.dofus.BuildInfos,com.ankamagames.dofus.network.++,com.ankamagames.jerakine.network.++'
-export config='parallelSpeedUp=0'
+export config='parallelSpeedUp=0,exportTimeout=13000'
 
 cd "$( dirname "${BASH_SOURCE[0]}" )"
 cd ..
 
-/Applications/FFDec.app/Contents/Resources/ffdec.sh \
+ffdec \
   -config "$config" \
     -selectclass "$selectclass" \
       -export script \

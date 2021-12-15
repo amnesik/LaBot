@@ -23,7 +23,7 @@ logger = logging.getLogger("labot")
 
 
 def from_client(origin):
-    return origin.getpeername()[0] == "127.0.0.1"
+    return origin.getpeername()[0] == "192.168.136.132"
 
 
 def direction(origin):
@@ -128,15 +128,25 @@ class MsgBridgeHandler(DummyBridgeHandler, ABC):
         # print(direction(origin), self.buf[origin].data)
         msg = Msg.fromRaw(self.buf[origin], from_client)
         while msg is not None:
-            msgType = protocol.msg_from_id[msg.id]
-            parsedMsg = protocol.read(msgType, msg.data)
+            if msg.id in protocol.msg_from_id:
+                msgType = protocol.msg_from_id[msg.id]
+                parsedMsg = protocol.read(msgType, msg.data)
+                assert msg.data.remaining() == 0, (
+                    "All content of %s have not been read into %s:\n %s"
+                    % (msgType, parsedMsg, msg.data)
+                )
+                self.handle_message(parsedMsg, origin)
+            else:
+                print('sorry, no '+str(msg.id))
+            #msgType = protocol.msg_from_id[msg.id]
+#            parsedMsg = protocol.read(msgType, msg.data)
 
-            assert msg.data.remaining() == 0, (
-                "All content of %s have not been read into %s:\n %s"
-                % (msgType, parsedMsg, msg.data)
-            )
+ ##           assert msg.data.remaining() == 0, (
+   #             "All content of %s have not been read into %s:\n %s"
+    #            % (msgType, parsedMsg, msg.data)
+     #       )
 
-            self.handle_message(parsedMsg, origin)
+      #      self.handle_message(parsedMsg, origin)
             msg = Msg.fromRaw(self.buf[origin], from_client)
 
     @abstractmethod
@@ -179,55 +189,154 @@ class InjectorBridgeHandler(BridgeHandler):
         self.injected_to_server += 1
         self.coSer.sendall(data)
 
+    def ask_item_price(self, itemid=11971):
+        msg= Msg.from_json(
+            {"__type__": "ExchangeBidHouseSearchMessage", "follow": True, 'genId': itemid}
+        )
+        self.send_to_server(msg)
+
     def send_message(self, s):
         msg = Msg.from_json(
             {"__type__": "ChatClientMultiMessage", "content": s, "channel": 0}
         )
         self.send_to_server(msg)
 
+
     def handle(self, data, origin):
+        self.other[origin].sendall(data) # ici
         self.buf[origin] += data
         from_client = origin == self.coJeu
 
         msg = Msg.fromRaw(self.buf[origin], from_client)
 
         while msg is not None:
-            msgType = protocol.msg_from_id[msg.id]
-            parsedMsg = protocol.read(msgType, msg.data)
+            if msg.id in protocol.msg_from_id:
+                msgType = protocol.msg_from_id[msg.id]
+                parsedMsg = protocol.read(msgType, msg.data)
 
-            assert msg.data.remaining() in [0, 48], (
-                "All content of %s have not been read into %s:\n %s"
-                % (msgType, parsedMsg, msg.data)
-            )
-
-            if from_client:
-                logger.debug(
-                    ("-> [%(count)i] %(name)s (%(size)i Bytes)"),
-                    dict(
-                        count=msg.count,
-                        name=protocol.msg_from_id[msg.id]["name"],
-                        size=len(msg.data),
-                    ),
+                assert msg.data.remaining() in [0, 48], (
+                    "All content of %s have not been read into %s:\n %s"
+                    % (msgType, parsedMsg, msg.data)
                 )
+                if from_client:
+                    logger.debug(
+                        ("-> [%(count)i] %(name)s (%(size)i Bytes)"),
+                        dict(
+                            count=msg.count,
+                            name=protocol.msg_from_id[msg.id]["name"],
+                            size=len(msg.data),
+                        ),
+                    )
+                else:
+                    logger.debug(
+                        ("<- %(name)s (%(size)i Bytes)"),
+                        dict(name=protocol.msg_from_id[msg.id]["name"], size=len(msg.data)),
+                    )
+                if from_client:
+                    msg.count += self.injected_to_server - self.injected_to_client
+                    self.counter = msg.count
+                else:
+                    self.counter += 1
+                self.db.append(msg)
+                if self.dumper is not None:
+                    self.dumper.dump(msg)
+#ici                self.other[origin].sendall(msg.bytes()) #self.other[origin].sendall(msg.bytes()) data
+                self.handle_message(parsedMsg, origin)
+                msg = Msg.fromRaw(self.buf[origin], from_client)
+                time.sleep(0.5) #0.005
             else:
-                logger.debug(
-                    ("<- %(name)s (%(size)i Bytes)"),
-                    dict(name=protocol.msg_from_id[msg.id]["name"], size=len(msg.data)),
-                )
-            if from_client:
-                msg.count += self.injected_to_server - self.injected_to_client
-                self.counter = msg.count
-            else:
-                self.counter += 1
-            self.db.append(msg)
-            if self.dumper is not None:
-                self.dumper.dump(msg)
-            self.other[origin].sendall(msg.bytes())
+#ici                self.other[origin].sendall(data)
+                print(str(data)+ 'sent !!!!')
+                time.sleep(0.5)
 
-            self.handle_message(parsedMsg, origin)
-            msg = Msg.fromRaw(self.buf[origin], from_client)
+#                print('sorry, no pkt id in db '+str(msg.id))
+#                logger.debug('sorry, no pkt id in db '+str(msg.id))
+#                if from_client:
+#                    msg.count += self.injected_to_server - self.injected_to_client
+#                    self.counter = msg.count
+#                else:
+#                    self.counter += 1
+#                self.other[origin].sendall(data)
+#                #msg = Msg.fromRaw(self.buf[origin], from_client)
+#                time.sleep(0.5)
 
-            time.sleep(0.005)
 
     def handle_message(self, m, o):
+        print(direction(o))
+        print(m)
+        print()
+        print()
         pass
+
+
+class LucInjector(DummyBridgeHandler):
+
+    def __init__(self, coJeu, coSer):
+        super().__init__(coJeu, coSer)
+        self.buf = {coJeu: Buffer(), coSer: Buffer()}
+        self.injected_to_server = 0
+        self.counter = 0
+
+
+    def send_to_server(self, data):
+        if isinstance(data, Msg):
+            data.count = self.counter + 1
+            print("Injected : " + str(data))
+            data = data.bytes()
+        self.injected_to_server += 1
+        self.coSer.sendall(data)
+
+
+
+    def send_message(self, s):
+        msg = Msg.from_json(
+            {"__type__": "ChatClientMultiMessage", "content": s, "channel": 0}
+        )
+        self.send_to_server(msg)
+
+    def ask_item_price(self, itemid):
+        msg= Msg.from_json(
+            {'__type__': 'ExchangeBidHouseSearchMessage', 'genId': itemid, 'follow': True}
+        )
+        self.send_to_server(msg)
+
+
+
+    def handle(self, data, origin):
+
+        super().handle(data, origin)
+        #self.other[origin].sendall(data)
+        self.buf[origin] += data
+        from_client = origin == self.coJeu
+        # print(direction(origin), self.buf[origin].data)
+        msg = Msg.fromRaw(self.buf[origin], from_client)
+        while msg is not None:
+            if msg.id in protocol.msg_from_id:
+                msgType = protocol.msg_from_id[msg.id]
+                parsedMsg = protocol.read(msgType, msg.data)
+                assert msg.data.remaining() == 0, (
+                    "All content of %s have not been read into %s:\n %s"
+                    % (msgType, parsedMsg, msg.data)
+                )
+                self.handle_message(parsedMsg, origin)
+            else:
+                print('sorry, no '+str(msg.id))
+            msg = Msg.fromRaw(self.buf[origin], from_client)
+
+
+    def handle_message(self, msg, origin):
+        print(direction(origin))
+        print(msg)
+        if msg["__type__"] == "ChatClientMultiMessage":
+            print(msg["content"])
+            time.sleep(1)
+#            self.send_message("azerteyuioop")
+            self.ask_item_price(11971)
+            time.sleep(1)
+            self.send_message("weshwesh")
+
+#            self.ask_item_price(11971)
+
+#            print(msg.json()) # for debug with crash
+        print()
+        print()
