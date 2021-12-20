@@ -351,11 +351,14 @@ class LucInjector(DummyBridgeHandler):
 #        print(direction(origin))
         if self.script == "on":
             if len(self.itemsleft) == 0:
-                self.script = "off"
+                self.itemsleft = [None] * len(self.items)
+                for i in range(0, len(self.items)):
+                    self.itemsleft[i] = self.items[i]
+#                self.script = "off"
             else:
                 datenow = time.time()
                 diff = datenow - self.timer
-                if diff > 4:
+                if diff > 0.8:
                     if (self.injections%3) == 2:
                         self.disconnect_hdv()
                         self.connect_hdv()
@@ -378,7 +381,7 @@ class LucInjector(DummyBridgeHandler):
                    print(itemID)
                    print(pricesArray)
                    prices = str(pricesArray[0]) + ',' + str(pricesArray[1]) + ',' + str(pricesArray[2])
-                   requests.get('https://o-sens-propre.fr/dodo/add.php?token=xxxxxxxxxx&itemID='+str(itemID)+'&prices='+prices)
+                   requests.get('https://o-sens-propre.fr/dodo/add.php?token=456789tyhujizoefiuho678945&itemID='+str(itemID)+'&prices='+prices)
                    print("--------------- GOT ONE ---------------")
 
 # execute our injection : start it by sending any message on chat to /general
